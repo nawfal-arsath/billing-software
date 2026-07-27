@@ -22,6 +22,7 @@ const Billing = (function () {
       document.getElementById("bill-modal").classList.add("hidden")
     );
     document.getElementById("bill-whatsapp").addEventListener("click", sendWhatsApp);
+    document.getElementById("bill-delete").addEventListener("click", deleteBill);
   }
 
   function onSearch() {
@@ -239,7 +240,32 @@ const Billing = (function () {
       <div class="bp-foot">Thank you! Visit again 🙏</div>
     `;
     lastSale = sale;
+
+    // Admins can delete a saved bill from the preview (returns items to stock).
+    const delBtn = document.getElementById("bill-delete");
+    delBtn.classList.toggle("hidden", !(Auth.isAdmin() && sale && sale.id));
+
     document.getElementById("bill-modal").classList.remove("hidden");
+  }
+
+  async function deleteBill() {
+    if (!lastSale || !lastSale.id) return;
+    if (!Auth.isAdmin()) return;
+    if (!confirm("Delete this bill permanently? The items will be added back to stock.")) return;
+    const btn = document.getElementById("bill-delete");
+    btn.disabled = true;
+    try {
+      await DB.deleteSale(lastSale.id);
+    } catch (err) {
+      btn.disabled = false;
+      return App.toast("Could not delete bill.");
+    }
+    btn.disabled = false;
+    lastSale = null;
+    document.getElementById("bill-modal").classList.add("hidden");
+    App.toast("Bill deleted");
+    Inventory.render();
+    Reports.render();
   }
 
   function sendWhatsApp() {
