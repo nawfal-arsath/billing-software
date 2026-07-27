@@ -78,7 +78,9 @@
   <div id="app" class="app hidden">
     <header class="topbar">
       <div class="topbar-title"><span id="shop-name">FW</span> <span id="role-badge" class="role-badge">Admin</span></div>
-      <button id="lock-btn" class="icon-btn" title="Lock">🔒</button>
+      <button id="lock-btn" class="btn-logout" title="Log out">
+        <span class="lo-icon" aria-hidden="true">⏻</span><span class="lo-text">Logout</span>
+      </button>
     </header>
 
     <main class="content">
@@ -250,7 +252,7 @@
       <div id="bill-preview" class="bill-preview"></div>
       <div class="modal-actions">
         <button id="bill-close" class="btn btn-ghost">Close</button>
-        <button id="bill-whatsapp" class="btn btn-whatsapp">Send on WhatsApp</button>
+        <button id="bill-whatsapp" class="btn btn-whatsapp">Send to customer</button>
       </div>
     </div>
   </div>
