@@ -1,0 +1,15 @@
+# FW - Netlify config (static site, no build step)
+[build]
+  publish = "."
+  command = ""
+
+# Let the service worker and manifest be served fresh
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json"

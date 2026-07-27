@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>FW · Footwear Billing</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ============ LOGIN / SETUP SCREEN ============ -->
+  <div id="auth-screen" class="screen auth-screen">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="brand-logo">FW</div>
+        <h1 id="auth-title">FW</h1>
+        <p id="auth-subtitle" class="muted">Footwear billing &amp; stock</p>
+      </div>
+
+      <!-- First time setup -->
+      <form id="setup-form" class="auth-form hidden" autocomplete="off">
+        <p class="section-hint">One-time setup. You'll create two logins: an Admin (full control) and a Billing counter (bills only).</p>
+        <label>Shop name
+          <input type="text" id="setup-shop" placeholder="e.g. FW" value="FW" required />
+        </label>
+        <label>Owner WhatsApp number
+          <input type="tel" id="setup-owner" inputmode="numeric" placeholder="e.g. 9876543210" />
+        </label>
+        <label>Secret cost code (10 letters, no repeats)
+          <input type="text" id="setup-code" maxlength="10" placeholder="e.g. BLACKSHOEP" required />
+          <small class="muted">Maps digits 0-9 to letters, so your buying price stays hidden.</small>
+        </label>
+        <label>Admin PIN (you — sees everything)
+          <input type="password" id="setup-pin" inputmode="numeric" placeholder="4-6 digit PIN" required />
+        </label>
+        <label>Confirm Admin PIN
+          <input type="password" id="setup-pin2" inputmode="numeric" placeholder="Re-enter Admin PIN" required />
+        </label>
+        <label>Billing PIN (counter staff — bills only)
+          <input type="password" id="setup-bpin" inputmode="numeric" placeholder="Different 4-6 digit PIN" required />
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Create my shop</button>
+        <p id="setup-error" class="error-text"></p>
+      </form>
+
+      <!-- Login (LOCAL / PIN mode) -->
+      <form id="login-form" class="auth-form hidden" autocomplete="off">
+        <div class="role-tabs">
+          <button type="button" class="role-tab active" data-role="admin">Admin<small>Full access</small></button>
+          <button type="button" class="role-tab" data-role="cashier">Billing<small>Bills only</small></button>
+        </div>
+        <label>Enter <span id="login-role-name">Admin</span> PIN
+          <input type="password" id="login-pin" inputmode="numeric" placeholder="PIN" required autofocus />
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Unlock</button>
+        <p id="login-error" class="error-text"></p>
+        <button type="button" id="reset-app" class="link-btn">Forgot PIN / reset app</button>
+      </form>
+
+      <!-- Login (CLOUD / email+password mode) -->
+      <form id="cloud-login-form" class="auth-form hidden" autocomplete="off">
+        <p class="section-hint">Sign in to your shop's shared database.</p>
+        <label>Email
+          <input type="email" id="cloud-email" placeholder="you@shop.com" autocomplete="username" required />
+        </label>
+        <label>Password
+          <input type="password" id="cloud-pass" placeholder="Password" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+        <p id="cloud-error" class="error-text"></p>
+        <p class="muted center" style="font-size:.75rem;margin-top:10px">Admin &amp; billing accounts are managed in Supabase.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ MAIN APP ============ -->
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <div class="topbar-title"><span id="shop-name">FW</span> <span id="role-badge" class="role-badge">Admin</span></div>
+      <button id="lock-btn" class="icon-btn" title="Lock">🔒</button>
+    </header>
+
+    <main class="content">
+      <!-- ---------- BILL TAB ---------- -->
+      <section id="tab-bill" class="tab active">
+        <div class="search-wrap">
+          <input type="text" id="item-search" placeholder="🔍 Search product, brand or article no..." autocomplete="off" />
+          <div id="search-results" class="search-results"></div>
+        </div>
+
+        <div class="cart">
+          <h2 class="cart-head">Current Bill</h2>
+          <div id="cart-items" class="cart-items">
+            <p class="empty-note">Search above and tap an item to add it to the bill.</p>
+          </div>
+
+          <div id="cart-summary" class="cart-summary hidden">
+            <div class="summary-row">
+              <span>Subtotal</span><span id="cart-subtotal">₹0</span>
+            </div>
+            <div class="summary-row">
+              <label class="disc-label">Extra discount
+                <input type="number" id="cart-discount" value="0" min="0" step="1" />
+              </label>
+            </div>
+            <div class="summary-row total-row">
+              <span>Total</span><span id="cart-total">₹0</span>
+            </div>
+
+            <div class="customer-fields">
+              <input type="text" id="cust-name" placeholder="Customer name (optional)" />
+              <input type="tel" id="cust-phone" inputmode="numeric" placeholder="Customer WhatsApp (optional)" />
+            </div>
+
+            <div class="bill-actions">
+              <button id="clear-bill" class="btn btn-ghost">Clear</button>
+              <button id="save-bill" class="btn btn-primary">Save & Bill</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- STOCK TAB ---------- -->
+      <section id="tab-stock" class="tab">
+        <div class="tab-head">
+          <h2>Stock</h2>
+          <button id="add-item-btn" class="btn btn-primary btn-sm">+ Add item</button>
+        </div>
+        <div class="stock-tools">
+          <input type="text" id="stock-search" placeholder="🔍 Filter stock..." />
+          <button id="reveal-toggle" class="btn btn-ghost btn-sm" title="Show/hide real cost">👁 Cost</button>
+        </div>
+        <div class="stock-stats" id="stock-stats"></div>
+        <div id="stock-list" class="stock-list"></div>
+      </section>
+
+      <!-- ---------- REPORTS TAB ---------- -->
+      <section id="tab-reports" class="tab">
+        <h2>Sales overview</h2>
+        <div class="range-tabs">
+          <button class="range-btn active" data-range="day">Today</button>
+          <button class="range-btn" data-range="week">Week</button>
+          <button class="range-btn" data-range="month">Month</button>
+          <button class="range-btn" data-range="all">All</button>
+        </div>
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <div class="chart-card">
+          <h3 id="chart-title">Sales trend</h3>
+          <div id="chart" class="chart"></div>
+        </div>
+        <div class="history-head">
+          <h3>Recent bills</h3>
+        </div>
+        <div id="sales-history" class="sales-history"></div>
+      </section>
+
+      <!-- ---------- SETTINGS TAB ---------- -->
+      <section id="tab-settings" class="tab">
+        <h2>Settings</h2>
+        <div class="settings-list">
+          <label class="setting-item">Shop name
+            <input type="text" id="set-shop" />
+          </label>
+          <label class="setting-item">Owner WhatsApp number
+            <input type="tel" id="set-owner" inputmode="numeric" />
+          </label>
+          <label class="setting-item">Secret cost code
+            <input type="text" id="set-code" maxlength="10" />
+            <small class="muted">Digits 0-9 map to these letters in order.</small>
+          </label>
+          <label class="setting-item">Send owner a copy of every bill
+            <input type="checkbox" id="set-ownercopy" />
+          </label>
+          <label class="setting-item">Auto-lock after (minutes idle)
+            <input type="number" id="set-autolock" min="0" step="1" placeholder="0 = never" />
+          </label>
+          <button id="save-settings" class="btn btn-primary btn-block">Save settings</button>
+
+          <hr class="divider" />
+          <button id="change-pin" class="btn btn-ghost btn-block local-only">Change Admin PIN</button>
+          <button id="change-bpin" class="btn btn-ghost btn-block local-only">Change Billing PIN</button>
+          <button id="export-data" class="btn btn-ghost btn-block">⬇ Backup data (export)</button>
+          <button id="import-data" class="btn btn-ghost btn-block local-only">⬆ Restore data (import)</button>
+          <input type="file" id="import-file" accept="application/json" class="hidden" />
+          <button id="signout-btn" class="btn btn-ghost btn-block cloud-only hidden">Sign out</button>
+          <button id="wipe-data" class="btn btn-danger btn-block local-only">Erase everything</button>
+          <p class="muted center version" id="mode-note">FW · runs on this device</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- ---------- BOTTOM NAV ---------- -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="bill"><span>🧾</span>Bill</button>
+      <button class="nav-btn admin-only" data-tab="stock"><span>📦</span>Stock</button>
+      <button class="nav-btn admin-only" data-tab="reports"><span>📊</span>Reports</button>
+      <button class="nav-btn admin-only" data-tab="settings"><span>⚙️</span>Settings</button>
+    </nav>
+  </div>
+
+  <!-- ============ ITEM EDIT MODAL ============ -->
+  <div id="item-modal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="item-modal-title">Add item</h3>
+      <form id="item-form">
+        <input type="hidden" id="item-id" />
+        <label>Product name
+          <input type="text" id="item-name" placeholder="e.g. Sports Running Shoe" required />
+        </label>
+        <div class="two-col">
+          <label>Brand
+            <input type="text" id="item-brand" placeholder="e.g. Nike" />
+          </label>
+          <label>Article / Model no.
+            <input type="text" id="item-model" placeholder="e.g. AR-2291" />
+          </label>
+        </div>
+        <div class="two-col">
+          <label>Size
+            <input type="text" id="item-size" placeholder="e.g. 8 / UK7" />
+          </label>
+          <label>Color
+            <input type="text" id="item-color" placeholder="e.g. Black" />
+          </label>
+        </div>
+        <div class="two-col">
+          <label>Cost price (₹)
+            <input type="number" id="item-cost" min="0" step="1" placeholder="Your cost" />
+          </label>
+          <label>Selling rate (₹)
+            <input type="number" id="item-price" min="0" step="1" placeholder="MRP / rate" required />
+          </label>
+        </div>
+        <label>Quantity in stock
+          <input type="number" id="item-qty" min="0" step="1" value="1" required />
+        </label>
+        <div class="modal-actions">
+          <button type="button" id="item-cancel" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+        <button type="button" id="item-delete" class="btn btn-danger btn-block hidden">Delete item</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ BILL PREVIEW MODAL ============ -->
+  <div id="bill-modal" class="modal hidden">
+    <div class="modal-card">
+      <div id="bill-preview" class="bill-preview"></div>
+      <div class="modal-actions">
+        <button id="bill-close" class="btn btn-ghost">Close</button>
+        <button id="bill-whatsapp" class="btn btn-whatsapp">Send on WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/inventory.js"></script>
+  <script src="js/billing.js"></script>
+  <script src="js/reports.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
