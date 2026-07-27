@@ -182,20 +182,15 @@ const Auth = (function () {
   async function lock() {
     currentRole = null;
     document.body.classList.remove("role-cashier");
-    document.getElementById("app").classList.add("hidden");
-    document.getElementById("auth-screen").classList.remove("hidden");
 
+    // In cloud mode, fully sign out so the next person must log in with their
+    // own account (prevents an old admin session lingering as a different user).
     if (DB.isCloud()) {
       try { await DB.getClient().auth.signOut(); } catch (e) { /* ignore */ }
-      document.getElementById("cloud-login-form").classList.remove("hidden");
-      const p = document.getElementById("cloud-pass");
-      if (p) p.value = "";
-    } else {
-      document.getElementById("login-form").classList.remove("hidden");
-      document.getElementById("setup-form").classList.add("hidden");
-      const pin = document.getElementById("login-pin");
-      if (pin) pin.value = "";
     }
+
+    // Reload for a guaranteed clean state (no stale role, cache, or cart).
+    location.reload();
   }
 
   function resetApp() {
