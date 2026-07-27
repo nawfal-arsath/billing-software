@@ -22,13 +22,19 @@ const App = (function () {
     if (tab === "stock") Inventory.render();
     if (tab === "reports") Reports.render();
     if (tab === "settings") loadSettingsForm();
+
+    // Always show the top of the tab (so the search bar is visible on Bill).
+    window.scrollTo(0, 0);
+    document.querySelector(".content").scrollTop = 0;
   }
 
   function bindNav() {
     document.querySelectorAll(".nav-btn").forEach((b) => {
       b.addEventListener("click", () => switchTab(b.dataset.tab));
     });
-    document.getElementById("lock-btn").addEventListener("click", () => doLock());
+    document.getElementById("lock-btn").addEventListener("click", () => {
+      if (confirm("Log out now?")) doLock();
+    });
   }
 
   /* ---------- Auto-lock on inactivity ---------- */
@@ -181,7 +187,29 @@ const App = (function () {
     await Auth.init(onUnlock);
 
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
+      // Reload once when a new service worker takes control (picks up updates).
+      let refreshing = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (refreshing) return;
+        refreshing = true;
+        location.reload();
+      });
+      navigator.serviceWorker
+        .register("sw.js")
+        .then((reg) => {
+          reg.addEventListener("updatefound", () => {
+            const nw = reg.installing;
+            if (!nw) return;
+            nw.addEventListener("statechange", () => {
+              // A new version is installed and ready; activate it immediately.
+              if (nw.state === "installed" && navigator.serviceWorker.controller) {
+                nw.postMessage && nw.postMessage("SKIP_WAITING");
+                reg.waiting && reg.waiting.postMessage("SKIP_WAITING");
+              }
+            });
+          });
+        })
+        .catch(() => {});
     }
   }
 
