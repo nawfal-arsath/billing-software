@@ -200,6 +200,28 @@ const DB = (function () {
     return sale;
   }
 
+  async function deleteSale(id) {
+    if (!CLOUD) {
+      const sales = read(K.sales, []);
+      const sale = sales.find((s) => s.id === id);
+      // Restore stock for each line of the deleted bill.
+      if (sale) {
+        const items = read(K.items, []);
+        (sale.items || []).forEach((ln) => {
+          const it = items.find((x) => x.id === ln.itemId);
+          if (it) it.qty = (Number(it.qty) || 0) + (Number(ln.qty) || 0);
+        });
+        write(K.items, items);
+      }
+      write(K.sales, sales.filter((s) => s.id !== id));
+      return;
+    }
+    // cloud: secure RPC restores stock + deletes the sale (admin only)
+    const r = await client.rpc("delete_sale", { p_sale_id: id });
+    if (r.error) throw r.error;
+    await load();
+  }
+
   /* ---------- backup ---------- */
   function exportAll() {
     return {
@@ -224,7 +246,7 @@ const DB = (function () {
     init, load, isCloud, mode, getClient, setRole,
     getSettings, saveSettings, isConfigured,
     getItems, getItem, upsertItem, deleteItem,
-    getSales, addSale,
+    getSales, addSale, deleteSale,
     exportAll, importAll, wipe,
   };
 })();
