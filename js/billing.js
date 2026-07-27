@@ -244,18 +244,12 @@ const Billing = (function () {
 
   function sendWhatsApp() {
     if (!lastSale) return;
-    const s = DB.getSettings() || {};
     const text = encodeURIComponent(buildBillText(lastSale));
-
-    // Send to customer if number present, else owner, else just open a share.
-    const target = lastSale.customerPhone || (s.ownerCopy ? s.owner : "");
-    const base = target ? `https://wa.me/${target}?text=${text}` : `https://wa.me/?text=${text}`;
+    // Open the customer's chat if we have their number, else just a share picker.
+    const base = lastSale.customerPhone
+      ? `https://wa.me/${lastSale.customerPhone}?text=${text}`
+      : `https://wa.me/?text=${text}`;
     window.open(base, "_blank");
-
-    // If a customer got the bill AND owner wants a copy, open owner chat too.
-    if (lastSale.customerPhone && s.ownerCopy && s.owner) {
-      setTimeout(() => window.open(`https://wa.me/${s.owner}?text=${text}`, "_blank"), 800);
-    }
   }
 
   // Re-render when tab shown
