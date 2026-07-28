@@ -3,7 +3,7 @@
    - When online, always fetch the latest code (no more "clear cache to update").
    - When offline, fall back to the last cached copy so the app still works.
    Cross-origin requests (Supabase, CDN) are left untouched. */
-const CACHE = "shopbill-v8";
+const CACHE = "shopbill-v9";
 const ASSETS = [
   "./",
   "./index.html",
