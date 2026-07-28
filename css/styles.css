@@ -262,6 +262,17 @@ h3 { font-size: 1rem; margin: 0 0 12px; font-weight: 700; }
 .total-row span:last-child { color: var(--primary); }
 .customer-fields { display: flex; flex-direction: column; gap: 11px; margin: 16px 0; }
 .customer-fields input { margin: 0; }
+.pay-method { margin: 4px 0 16px; }
+.pay-label { display: block; font-size: 0.78rem; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+.pay-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pay-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  background: var(--card-2); border: 1px solid var(--line-2); color: var(--muted);
+  border-radius: 12px; padding: 13px 0; font-weight: 700; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.pay-btn span { font-size: 1.15rem; line-height: 1; }
+.pay-btn.active { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; border-color: transparent; box-shadow: 0 6px 16px rgba(59, 98, 246, 0.28); }
 .bill-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 11px; }
 
 /* ---------- Stock ---------- */
@@ -291,8 +302,8 @@ h3 { font-size: 1rem; margin: 0 0 12px; font-weight: 700; }
 .stock-card .sc-qty.low { color: #fff; background: var(--danger); }
 
 /* ---------- Reports ---------- */
-.range-tabs { display: flex; gap: 8px; margin-bottom: 18px; background: var(--card); padding: 5px; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
-.range-btn { flex: 1; background: transparent; border: none; color: var(--muted); border-radius: 10px; padding: 10px 0; font-weight: 650; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
+.range-tabs { display: flex; gap: 5px; margin-bottom: 18px; background: var(--card); padding: 5px; border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+.range-btn { flex: 1; background: transparent; border: none; color: var(--muted); border-radius: 10px; padding: 10px 2px; font-weight: 650; font-size: 0.82rem; white-space: nowrap; cursor: pointer; transition: background 0.15s ease, color 0.15s ease; }
 .range-btn.active { background: linear-gradient(135deg, var(--primary), var(--primary-2)); color: #fff; box-shadow: 0 4px 12px rgba(59, 98, 246, 0.30); }
 .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
 .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); }
@@ -313,6 +324,7 @@ h3 { font-size: 1rem; margin: 0 0 12px; font-weight: 700; }
 .sale-card .sale-top { display: flex; justify-content: space-between; align-items: center; }
 .sale-card .sale-total { font-weight: 850; color: var(--primary); font-size: 1.05rem; }
 .sale-card .sale-meta { font-size: 0.76rem; color: var(--muted); margin-top: 5px; }
+.sale-card .sale-pay { display: inline-block; font-size: 0.72rem; font-weight: 650; color: var(--primary-ink); background: rgba(59, 98, 246, 0.08); border: 1px solid rgba(59, 98, 246, 0.16); padding: 2px 9px; border-radius: 999px; margin-top: 8px; }
 
 /* ---------- Settings ---------- */
 .settings-list { display: flex; flex-direction: column; }
@@ -361,7 +373,9 @@ h3 { font-size: 1rem; margin: 0 0 12px; font-weight: 700; }
 
 /* role visibility */
 body.role-cashier .admin-only { display: none !important; }
-body.role-cashier .bottom-nav { grid-template-columns: 1fr; }
+body.role-cashier .bottom-nav { grid-template-columns: repeat(3, 1fr); }
+/* When cost is hidden for billers, let the selling price use the full width. */
+body.role-cashier #cost-price-row { grid-template-columns: 1fr; }
 
 /* mode visibility */
 body.mode-cloud .local-only { display: none !important; }
