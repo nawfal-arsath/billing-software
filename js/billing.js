@@ -3,6 +3,7 @@ const Billing = (function () {
   // cart line: { itemId, name, model, price (editable), qty, stock }
   let cart = [];
   let lastSale = null;
+  let payMethod = "cash";
 
   function init() {
     const search = document.getElementById("item-search");
@@ -17,6 +18,13 @@ const Billing = (function () {
     document.getElementById("cart-discount").addEventListener("input", renderCart);
     document.getElementById("clear-bill").addEventListener("click", clearCart);
     document.getElementById("save-bill").addEventListener("click", saveBill);
+
+    document.querySelectorAll("#pay-options .pay-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        payMethod = b.dataset.pay;
+        document.querySelectorAll("#pay-options .pay-btn").forEach((x) => x.classList.toggle("active", x === b));
+      });
+    });
 
     document.getElementById("bill-close").addEventListener("click", () =>
       document.getElementById("bill-modal").classList.add("hidden")
@@ -152,7 +160,19 @@ const Billing = (function () {
     document.getElementById("cart-discount").value = 0;
     document.getElementById("cust-name").value = "";
     document.getElementById("cust-phone").value = "";
+    resetPayMethod();
     renderCart();
+  }
+
+  function resetPayMethod() {
+    payMethod = "cash";
+    document.querySelectorAll("#pay-options .pay-btn").forEach((x) =>
+      x.classList.toggle("active", x.dataset.pay === "cash")
+    );
+  }
+
+  function payLabel(m) {
+    return m === "gpay" ? "GPay" : "Cash";
   }
 
   async function saveBill() {
@@ -162,6 +182,8 @@ const Billing = (function () {
     const total = Math.max(0, subtotal - discount);
     const cost = cart.reduce((a, c) => a + (c.cost || 0) * c.qty, 0);
 
+    if (!confirm(`Confirm bill of ${U.money(total)} paid by ${payLabel(payMethod)}?`)) return;
+
     const sale = {
       date: Date.now(),
       items: cart.map((c) => ({ itemId: c.itemId, name: c.name, brand: c.brand, model: c.model, size: c.size, color: c.color, price: c.price, qty: c.qty, cost: c.cost, lineTotal: c.price * c.qty })),
@@ -170,6 +192,7 @@ const Billing = (function () {
       total,
       cost,
       profit: total - cost,
+      paymentMethod: payMethod,
       customerName: document.getElementById("cust-name").value.trim(),
       customerPhone: U.normPhone(document.getElementById("cust-phone").value.trim()),
     };
@@ -189,6 +212,7 @@ const Billing = (function () {
     document.getElementById("cart-discount").value = 0;
     document.getElementById("cust-name").value = "";
     document.getElementById("cust-phone").value = "";
+    resetPayMethod();
     renderCart();
     Inventory.render();
     Reports.render();
@@ -213,6 +237,7 @@ const Billing = (function () {
     lines.push("Subtotal: " + U.money(sale.subtotal));
     if (sale.discount > 0) lines.push("Discount: -" + U.money(sale.discount));
     lines.push("*TOTAL: " + U.money(sale.total) + "*");
+    if (sale.paymentMethod) lines.push("Paid by: " + payLabel(sale.paymentMethod));
     lines.push("--------------------------------");
     lines.push("Thank you! Visit again 🙏");
     return lines.join("\n");
@@ -236,6 +261,7 @@ const Billing = (function () {
         <tr><td>Subtotal</td><td>${U.money(sale.subtotal)}</td></tr>
         ${sale.discount > 0 ? `<tr><td>Discount</td><td>-${U.money(sale.discount)}</td></tr>` : ""}
         <tr class="bp-total"><td>TOTAL</td><td>${U.money(sale.total)}</td></tr>
+        ${sale.paymentMethod ? `<tr><td>Paid by</td><td>${payLabel(sale.paymentMethod)}</td></tr>` : ""}
       </table>
       <div class="bp-foot">Thank you! Visit again 🙏</div>
     `;
