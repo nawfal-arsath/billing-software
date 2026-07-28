@@ -12,8 +12,8 @@ const App = (function () {
   }
 
   function switchTab(tab) {
-    // Billing staff can only use the Bill tab.
-    if (!Auth.isAdmin() && tab !== "bill") return;
+    // Billing staff can use Bill, Stock and Reports - but not Settings.
+    if (!Auth.isAdmin() && tab === "settings") return;
     document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
     document.getElementById("tab-" + tab).classList.add("active");
     document.querySelectorAll(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
