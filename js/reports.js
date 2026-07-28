@@ -14,14 +14,21 @@ const Reports = (function () {
   }
 
   function inRange(ts) {
-    const now = Date.now();
     if (range === "day") return ts >= U.todayStart().getTime();
+    if (range === "yesterday") {
+      const yStart = U.todayStart(new Date(Date.now() - 86400000)).getTime();
+      return ts >= yStart && ts < yStart + 86400000;
+    }
     if (range === "week") return ts >= U.startOfWeek().getTime();
     if (range === "month") return ts >= U.startOfMonth().getTime();
     return true; // all
   }
 
   function render() {
+    const isAdmin = Auth.isAdmin();
+    // Billers can only view Today / Yesterday - never fall back to a wider range.
+    if (!isAdmin && range !== "day" && range !== "yesterday") range = "day";
+
     const sales = DB.getSales();
     const filtered = sales.filter((s) => inRange(s.date));
 
@@ -29,12 +36,16 @@ const Reports = (function () {
     const profit = filtered.reduce((a, s) => a + (s.profit || 0), 0);
     const count = filtered.length;
     const units = filtered.reduce((a, s) => a + s.items.reduce((b, i) => b + i.qty, 0), 0);
+    const cashTotal = filtered.filter((s) => (s.paymentMethod || "cash") !== "gpay").reduce((a, s) => a + (s.total || 0), 0);
+    const gpayTotal = filtered.filter((s) => (s.paymentMethod || "cash") === "gpay").reduce((a, s) => a + (s.total || 0), 0);
 
     document.getElementById("kpi-grid").innerHTML = `
       <div class="kpi"><div class="k-val">${U.money(revenue)}</div><div class="k-label">Sales revenue</div></div>
-      <div class="kpi"><div class="k-val profit">${U.money(profit)}</div><div class="k-label">Profit</div></div>
+      ${isAdmin ? `<div class="kpi"><div class="k-val profit">${U.money(profit)}</div><div class="k-label">Profit</div></div>` : ""}
       <div class="kpi"><div class="k-val">${count}</div><div class="k-label">Bills</div></div>
       <div class="kpi"><div class="k-val">${units}</div><div class="k-label">Items sold</div></div>
+      <div class="kpi"><div class="k-val">${U.money(cashTotal)}</div><div class="k-label">💵 Cash</div></div>
+      <div class="kpi"><div class="k-val">${U.money(gpayTotal)}</div><div class="k-label">📱 GPay</div></div>
     `;
 
     renderChart(sales);
@@ -45,7 +56,7 @@ const Reports = (function () {
     const buckets = [];
     const now = new Date();
 
-    if (range === "day") {
+    if (range === "day" || range === "yesterday") {
       // last 7 days
       for (let i = 6; i >= 0; i--) {
         const d = U.todayStart(new Date(now.getTime() - i * 86400000));
@@ -102,12 +113,14 @@ const Reports = (function () {
     box.innerHTML = sorted
       .map((s) => {
         const names = s.items.map((i) => i.name + " ×" + i.qty).join(", ");
+        const pay = (s.paymentMethod || "cash") === "gpay" ? "📱 GPay" : "💵 Cash";
         return `<div class="sale-card" data-id="${s.id}">
           <div class="sale-top">
             <span>${U.fmtDateTime(s.date)}</span>
             <span class="sale-total">${U.money(s.total)}</span>
           </div>
           <div class="sale-meta">${Inventory.esc(names)}${s.customerName ? " · " + Inventory.esc(s.customerName) : ""}</div>
+          <div class="sale-pay">${pay}</div>
         </div>`;
       })
       .join("");
