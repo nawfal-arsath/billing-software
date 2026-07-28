@@ -115,6 +115,14 @@
               <input type="tel" id="cust-phone" inputmode="numeric" placeholder="Customer WhatsApp (optional)" />
             </div>
 
+            <div class="pay-method">
+              <span class="pay-label">Payment</span>
+              <div class="pay-options" id="pay-options">
+                <button type="button" class="pay-btn active" data-pay="cash"><span>💵</span> Cash</button>
+                <button type="button" class="pay-btn" data-pay="gpay"><span>📱</span> GPay</button>
+              </div>
+            </div>
+
             <div class="bill-actions">
               <button id="clear-bill" class="btn btn-ghost">Clear</button>
               <button id="save-bill" class="btn btn-primary">Save & Bill</button>
@@ -131,7 +139,7 @@
         </div>
         <div class="stock-tools">
           <input type="text" id="stock-search" placeholder="🔍 Filter stock..." />
-          <button id="reveal-toggle" class="btn btn-ghost btn-sm" title="Show/hide real cost">👁 Cost</button>
+          <button id="reveal-toggle" class="btn btn-ghost btn-sm admin-only" title="Show/hide real cost">👁 Cost</button>
         </div>
         <div class="stock-stats" id="stock-stats"></div>
         <div id="stock-list" class="stock-list"></div>
@@ -142,9 +150,10 @@
         <h2>Sales overview</h2>
         <div class="range-tabs">
           <button class="range-btn active" data-range="day">Today</button>
-          <button class="range-btn" data-range="week">Week</button>
-          <button class="range-btn" data-range="month">Month</button>
-          <button class="range-btn" data-range="all">All</button>
+          <button class="range-btn" data-range="yesterday">Yesterday</button>
+          <button class="range-btn admin-only" data-range="week">Week</button>
+          <button class="range-btn admin-only" data-range="month">Month</button>
+          <button class="range-btn admin-only" data-range="all">All</button>
         </div>
         <div class="kpi-grid" id="kpi-grid"></div>
         <div class="chart-card">
@@ -195,8 +204,8 @@
     <!-- ---------- BOTTOM NAV ---------- -->
     <nav class="bottom-nav">
       <button class="nav-btn active" data-tab="bill"><span>🧾</span>Bill</button>
-      <button class="nav-btn admin-only" data-tab="stock"><span>📦</span>Stock</button>
-      <button class="nav-btn admin-only" data-tab="reports"><span>📊</span>Reports</button>
+      <button class="nav-btn" data-tab="stock"><span>📦</span>Stock</button>
+      <button class="nav-btn" data-tab="reports"><span>📊</span>Reports</button>
       <button class="nav-btn admin-only" data-tab="settings"><span>⚙️</span>Settings</button>
     </nav>
   </div>
@@ -226,8 +235,8 @@
             <input type="text" id="item-color" placeholder="e.g. Black" />
           </label>
         </div>
-        <div class="two-col">
-          <label>Cost price (₹)
+        <div class="two-col" id="cost-price-row">
+          <label class="admin-only">Cost price (₹)
             <input type="number" id="item-cost" min="0" step="1" placeholder="Your cost" />
           </label>
           <label>Selling rate (₹)
