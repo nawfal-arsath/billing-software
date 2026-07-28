@@ -64,6 +64,7 @@ const DB = (function () {
       total: Number(r.total) || 0,
       profit: fin ? Number(fin.profit) || 0 : 0,
       cost: fin ? Number(fin.cost) || 0 : 0,
+      paymentMethod: r.payment_method || "cash",
       customerName: r.customer_name || "",
       customerPhone: r.customer_phone || "",
     };
@@ -97,7 +98,7 @@ const DB = (function () {
     const salesRes = await client
       .from("sales")
       .select(
-        "id,created_at,subtotal,discount,total,customer_name,customer_phone,sale_items(name,brand,model,size,color,price,qty,line_total),sale_finance(cost,profit)"
+        "id,created_at,subtotal,discount,total,payment_method,customer_name,customer_phone,sale_items(name,brand,model,size,color,price,qty,line_total),sale_finance(cost,profit)"
       )
       .order("created_at", { ascending: false });
     cSales = (salesRes.data || []).map(saleFromRow);
@@ -154,8 +155,11 @@ const DB = (function () {
       if (r.error) throw r.error;
       id = r.data.id;
     }
-    const rc = await client.from("item_costs").upsert({ item_id: id, cost: Number(item.cost) || 0 });
-    if (rc.error) throw rc.error;
+    // Only admins may write the secret cost (RLS also enforces this).
+    if (role === "admin") {
+      const rc = await client.from("item_costs").upsert({ item_id: id, cost: Number(item.cost) || 0 });
+      if (rc.error) throw rc.error;
+    }
     await load();
     return { ...item, id };
   }
@@ -192,7 +196,7 @@ const DB = (function () {
     const r = await client.rpc("record_sale", {
       p_subtotal: sale.subtotal, p_discount: sale.discount, p_total: sale.total,
       p_customer_name: sale.customerName || null, p_customer_phone: sale.customerPhone || null,
-      p_items: payload,
+      p_items: payload, p_payment: sale.paymentMethod || "cash",
     });
     if (r.error) throw r.error;
     sale.id = r.data;
