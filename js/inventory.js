@@ -29,7 +29,7 @@ const Inventory = (function () {
     document.getElementById("item-price").value = item ? item.price ?? "" : "";
     document.getElementById("item-qty").value = item ? item.qty ?? 0 : 1;
     document.getElementById("item-modal-title").textContent = item ? "Edit item" : "Add item";
-    document.getElementById("item-delete").classList.toggle("hidden", !item);
+    document.getElementById("item-delete").classList.toggle("hidden", !item || !Auth.isAdmin());
     document.getElementById("item-modal").classList.remove("hidden");
   }
 
@@ -82,13 +82,14 @@ const Inventory = (function () {
     const list = document.getElementById("stock-list");
 
     // Stats
+    const isAdmin = Auth.isAdmin();
     const totalItems = items.length;
     const totalUnits = items.reduce((a, x) => a + (Number(x.qty) || 0), 0);
     const stockValue = items.reduce((a, x) => a + (Number(x.cost) || 0) * (Number(x.qty) || 0), 0);
     document.getElementById("stock-stats").innerHTML = `
       <div class="stat-pill"><div class="sp-val">${totalItems}</div><div class="sp-label">Items</div></div>
       <div class="stat-pill"><div class="sp-val">${totalUnits}</div><div class="sp-label">Units in stock</div></div>
-      <div class="stat-pill"><div class="sp-val">${revealCost ? U.money(stockValue) : U.toCode(stockValue, code)}</div><div class="sp-label">Stock value (cost)</div></div>
+      ${isAdmin ? `<div class="stat-pill"><div class="sp-val">${revealCost ? U.money(stockValue) : U.toCode(stockValue, code)}</div><div class="sp-label">Stock value (cost)</div></div>` : ""}
     `;
 
     const filtered = items
@@ -109,7 +110,7 @@ const Inventory = (function () {
           <div class="sc-info">
             <div class="sc-name">${x.brand ? esc(x.brand) + " · " : ""}${esc(x.name)}</div>
             <div class="sc-sub">${subLine(x)}</div>
-            <div class="sc-cost">Cost: ${costDisplay}</div>
+            ${isAdmin ? `<div class="sc-cost">Cost: ${costDisplay}</div>` : ""}
           </div>
           <div class="sc-right">
             <div class="sc-price">${U.money(x.price)}</div>
