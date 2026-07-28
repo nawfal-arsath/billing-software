@@ -46,10 +46,14 @@ create table if not exists public.sales (
   subtotal numeric not null default 0,
   discount numeric not null default 0,
   total numeric not null default 0,
+  payment_method text default 'cash',
   customer_name text,
   customer_phone text,
   created_by uuid default auth.uid()
 );
+
+-- Safe to re-run on an existing DB: add the column if it's missing.
+alter table public.sales add column if not exists payment_method text default 'cash';
 
 create table if not exists public.sale_items (
   id uuid primary key default gen_random_uuid(),
@@ -114,13 +118,20 @@ drop policy if exists settings_write on public.settings;
 create policy settings_write on public.settings for all
   using (public.is_admin()) with check (public.is_admin());
 
--- items: everyone signed in reads; only admin writes
+-- items: everyone signed in reads; signed-in staff can add & edit; only admin deletes
 drop policy if exists items_select on public.items;
 create policy items_select on public.items for select
   using (auth.uid() is not null);
 drop policy if exists items_write on public.items;
-create policy items_write on public.items for all
-  using (public.is_admin()) with check (public.is_admin());
+drop policy if exists items_insert on public.items;
+drop policy if exists items_update on public.items;
+drop policy if exists items_delete on public.items;
+create policy items_insert on public.items for insert
+  with check (auth.uid() is not null);
+create policy items_update on public.items for update
+  using (auth.uid() is not null) with check (auth.uid() is not null);
+create policy items_delete on public.items for delete
+  using (public.is_admin());
 
 -- item_costs: ADMIN ONLY (billing staff cannot even read costs)
 drop policy if exists item_costs_admin on public.item_costs;
@@ -148,13 +159,15 @@ create policy sale_finance_admin on public.sale_finance for all
 -- Billing staff call this ONE function to record a sale. It runs with
 -- elevated rights (security definer) so it can read costs + reduce stock,
 -- while the caller never gets direct access to costs.
+drop function if exists public.record_sale(numeric, numeric, numeric, text, text, jsonb);
 create or replace function public.record_sale(
   p_subtotal numeric,
   p_discount numeric,
   p_total numeric,
   p_customer_name text,
   p_customer_phone text,
-  p_items jsonb
+  p_items jsonb,
+  p_payment text default 'cash'
 ) returns uuid
 language plpgsql security definer set search_path = public as $$
 declare
@@ -166,8 +179,8 @@ begin
     raise exception 'Not authenticated';
   end if;
 
-  insert into public.sales (subtotal, discount, total, customer_name, customer_phone, created_by)
-  values (p_subtotal, p_discount, p_total, p_customer_name, p_customer_phone, auth.uid())
+  insert into public.sales (subtotal, discount, total, payment_method, customer_name, customer_phone, created_by)
+  values (p_subtotal, p_discount, p_total, coalesce(p_payment, 'cash'), p_customer_name, p_customer_phone, auth.uid())
   returning id into v_sale_id;
 
   for it in select * from jsonb_array_elements(p_items) loop
@@ -194,7 +207,34 @@ begin
   return v_sale_id;
 end $$;
 
-grant execute on function public.record_sale(numeric, numeric, numeric, text, text, jsonb) to authenticated;
+grant execute on function public.record_sale(numeric, numeric, numeric, text, text, jsonb, text) to authenticated;
+
+-- ---------- Delete a bill (ADMIN ONLY) ----------
+-- Runs with elevated rights: returns each line's qty back to stock, then
+-- deletes the sale (sale_items + sale_finance cascade away automatically).
+create or replace function public.delete_sale(p_sale_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  it record;
+begin
+  if not public.is_admin() then
+    raise exception 'Only an admin can delete a bill';
+  end if;
+
+  for it in
+    select item_id, qty from public.sale_items
+    where sale_id = p_sale_id and item_id is not null
+  loop
+    update public.items
+      set qty = qty + it.qty, updated_at = now()
+      where id = it.item_id;
+  end loop;
+
+  delete from public.sales where id = p_sale_id;
+end $$;
+
+grant execute on function public.delete_sale(uuid) to authenticated;
 
 -- Keep updated_at fresh on item edits
 create or replace function public.touch_items() returns trigger
